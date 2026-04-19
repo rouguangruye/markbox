@@ -1,7 +1,5 @@
 # 📦 墨匣 MarkBox
 
-**"发送是 AI 的脏活累活，阅读是人的高光时刻。"**
-
 一个极简、纯粹的只读邮件客户端，专为 AI Agent 与自动化工作流的通知解析而生。
 
 <p align="center">
@@ -139,6 +137,4 @@ flutter run
 
 <p align="center">
   Made with ❤️ by <a href="https://github.com/揉光入野">揉光入野</a>
-  <br/>
-  <i>Send by AI, Read by Human.</i>
 </p>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许所有域名的网络安全配置 -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- IMAP 邮箱服务器域名配置 -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">qq.com</domain>
+        <domain includeSubdomains="true">163.com</domain>
+        <domain includeSubdomains="true">gmail.com</domain>
+        <domain includeSubdomains="true">outlook.com</domain>
+        <domain includeSubdomains="true">office365.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
