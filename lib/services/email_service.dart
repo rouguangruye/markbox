@@ -698,18 +698,206 @@ class EmailService {
     }
   }
 
+  /// 判断是否是腾讯企业邮箱（企业微信邮箱）
+  ///
+  /// 腾讯企业邮箱的 IMAP 服务器通常是 imap.exmail.qq.com
+  bool _isTencentExmail(ImapConfig config) {
+    final server = config.server.toLowerCase();
+    return server.contains('exmail.qq.com') || server.contains('exmail');
+  }
+
+  /// 列出所有邮箱文件夹
+  ///
+  /// [config] IMAP 配置信息
+  /// 返回邮箱文件夹列表
+  Future<List<Mailbox>> listMailboxes({required ImapConfig config}) async {
+    try {
+      // 确保已连接
+      await connect(config);
+
+      // 列出所有邮箱文件夹
+      final mailboxes = await _client!.listMailboxes(recursive: true);
+
+      debugPrint('找到 ${mailboxes.length} 个邮箱文件夹');
+      for (final mailbox in mailboxes) {
+        debugPrint(
+          '  - ${mailbox.name} (path: ${mailbox.path}, flags: ${mailbox.flags})',
+        );
+      }
+
+      return mailboxes;
+    } catch (e) {
+      debugPrint('列出邮箱文件夹失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 查找"已删除"文件夹
+  ///
+  /// [config] IMAP 配置信息
+  /// 返回"已删除"文件夹的路径，如果找不到则返回 null
+  Future<String?> findTrashMailbox({required ImapConfig config}) async {
+    try {
+      final mailboxes = await listMailboxes(config: config);
+
+      // 常见的"已删除"文件夹名称（按优先级排序）
+      final trashNames = [
+        '已删除',
+        'Deleted Messages',
+        'Deleted',
+        'Trash',
+        '垃圾邮件',
+        'Junk',
+        'Spam',
+      ];
+
+      for (final name in trashNames) {
+        for (final mailbox in mailboxes) {
+          if (mailbox.name.toLowerCase() == name.toLowerCase() ||
+              mailbox.path.toLowerCase() == name.toLowerCase()) {
+            debugPrint('找到已删除文件夹: ${mailbox.path}');
+            return mailbox.path;
+          }
+        }
+      }
+
+      // 如果找不到，尝试查找包含 \Trash 标志的文件夹
+      for (final mailbox in mailboxes) {
+        if (mailbox.flags.contains(MailboxFlag.trash)) {
+          debugPrint('找到已删除文件夹(通过标志): ${mailbox.path}');
+          return mailbox.path;
+        }
+      }
+
+      debugPrint('未找到已删除文件夹');
+      return null;
+    } catch (e) {
+      debugPrint('查找已删除文件夹失败: $e');
+      return null;
+    }
+  }
+
+  /// 移动邮件到指定文件夹
+  ///
+  /// [config] IMAP 配置信息
+  /// [messageId] 邮件 UID
+  /// [targetMailbox] 目标邮箱文件夹名称
+  /// [mailbox] 当前邮箱文件夹名称，默认为 INBOX
+  Future<void> moveEmail({
+    required ImapConfig config,
+    required String messageId,
+    required String targetMailbox,
+    String mailbox = 'INBOX',
+  }) async {
+    try {
+      // 确保已连接
+      await connect(config);
+
+      // 选择邮箱文件夹
+      await _client!.selectMailboxByPath(mailbox);
+
+      // 解析邮件 UID
+      final uid = int.tryParse(messageId);
+      if (uid == null) {
+        throw EmailServiceException(
+          '无效的邮件 UID',
+          errorType: EmailServiceErrorType.parseError,
+        );
+      }
+
+      // 检查服务器是否支持 MOVE 扩展
+      final capabilities = _client!.serverInfo.capabilities;
+      if (capabilities == null ||
+          !capabilities.any((cap) => cap.name == 'MOVE')) {
+        throw EmailServiceException(
+          '服务器不支持 MOVE 命令',
+          errorType: EmailServiceErrorType.unknown,
+        );
+      }
+
+      // 使用 UID MOVE 移动邮件
+      await _client!.uidMove(
+        MessageSequence.fromId(uid),
+        targetMailboxPath: targetMailbox,
+      );
+
+      debugPrint('邮件 $messageId 已移动到 $targetMailbox');
+    } on EmailServiceException {
+      rethrow;
+    } on SocketException catch (e) {
+      throw EmailServiceException(
+        '网络连接失败: ${e.message}',
+        errorType: EmailServiceErrorType.networkError,
+        originalError: e,
+      );
+    } on TimeoutException catch (e) {
+      throw EmailServiceException(
+        '操作超时: ${e.message}',
+        errorType: EmailServiceErrorType.timeoutError,
+        originalError: e,
+      );
+    } on ImapException catch (e) {
+      // 检查是否是连接断开
+      if (_client != null && !_client!.isConnected) {
+        throw EmailServiceException(
+          'IMAP 连接已断开',
+          errorType: EmailServiceErrorType.connectionLost,
+          originalError: e,
+        );
+      }
+
+      throw EmailServiceException(
+        '移动邮件失败: ${e.message}',
+        errorType: EmailServiceErrorType.unknown,
+        originalError: e,
+      );
+    } catch (e) {
+      throw EmailServiceException(
+        '移动邮件失败: $e',
+        errorType: EmailServiceErrorType.unknown,
+        originalError: e,
+      );
+    }
+  }
+
   /// 删除邮件
   ///
   /// [config] IMAP 配置信息
   /// [messageId] 邮件 UID
   /// [mailbox] 邮箱文件夹名称，默认为 INBOX
-  /// 删除操作会先标记邮件为 \Deleted，然后执行 expunge 永久删除
+  ///
+  /// 删除策略：
+  /// - 腾讯企业邮箱：使用 MOVE 命令将邮件移动到"已删除"文件夹
+  /// - 其他邮箱：标记为 \Deleted 后执行 expunge 永久删除
   Future<void> deleteEmail({
     required ImapConfig config,
     required String messageId,
     String mailbox = 'INBOX',
   }) async {
     try {
+      // 腾讯企业邮箱使用移动方式删除
+      if (_isTencentExmail(config)) {
+        debugPrint('检测到腾讯企业邮箱，使用移动方式删除');
+
+        // 动态查找"已删除"文件夹
+        final trashMailbox = await findTrashMailbox(config: config);
+        if (trashMailbox == null) {
+          throw EmailServiceException(
+            '未找到"已删除"文件夹，无法删除邮件',
+            errorType: EmailServiceErrorType.unknown,
+          );
+        }
+
+        debugPrint('使用已删除文件夹: $trashMailbox');
+        await moveEmail(
+          config: config,
+          messageId: messageId,
+          targetMailbox: trashMailbox,
+          mailbox: mailbox,
+        );
+        return;
+      }
+
       // 确保已连接
       await connect(config);
 

@@ -68,6 +68,11 @@ class _AccountListPageState extends ConsumerState<AccountListPage> {
     return _buildAccountList(accountConfig.configs);
   }
 
+  /// 刷新邮箱配置列表
+  Future<void> _onRefresh() async {
+    await ref.read(accountConfigProvider.notifier).loadConfigs();
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -98,17 +103,21 @@ class _AccountListPageState extends ConsumerState<AccountListPage> {
   }
 
   Widget _buildAccountList(List<ImapConfig> configs) {
-    return ListView.builder(
-      padding: AppEdgeInsets.vertical8,
-      itemCount: configs.length,
-      itemBuilder: (context, index) {
-        final config = configs[index];
-        return _AccountListItem(
-          config: config,
-          onEdit: () => _navigateToEditAccount(context, config),
-          onDelete: () => _confirmDelete(context, config),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: AppEdgeInsets.vertical8,
+        itemCount: configs.length,
+        itemBuilder: (context, index) {
+          final config = configs[index];
+          return _AccountListItem(
+            config: config,
+            onEdit: () => _navigateToEditAccount(context, config),
+            onDelete: () => _confirmDelete(context, config),
+          );
+        },
+      ),
     );
   }
 
@@ -145,16 +154,7 @@ class _AccountListPageState extends ConsumerState<AccountListPage> {
 
     if (confirmed == true && mounted) {
       await ref.read(accountConfigProvider.notifier).deleteConfig(config.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('邮箱已删除'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      // 删除成功后用户可以看到列表变化，无需额外通知
     }
   }
 }

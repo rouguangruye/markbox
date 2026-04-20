@@ -360,14 +360,14 @@ class _EmailListPageState extends ConsumerState<EmailListPage> {
           .read(emailListProvider.notifier)
           .deleteEmail(email.id);
 
-      // 显示结果提示
-      if (context.mounted) {
+      // 删除失败时显示错误提示
+      if (!success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? '邮件已删除' : '删除失败'),
-            backgroundColor: success ? AppColors.success : AppColors.error,
+          const SnackBar(
+            content: Text('删除失败'),
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
       }

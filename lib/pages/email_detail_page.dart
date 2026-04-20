@@ -156,19 +156,19 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
           .read(emailListProvider.notifier)
           .deleteEmail(widget.emailId);
 
-      // 显示结果提示
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? '邮件已删除' : '删除失败'),
-            backgroundColor: success ? AppColors.success : AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-
-        // 删除成功后返回上一页
-        if (success) {
+        // 删除失败时显示错误提示
+        if (!success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('删除失败'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          // 删除成功后返回上一页
           Navigator.of(context).pop();
         }
       }

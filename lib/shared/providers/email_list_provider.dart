@@ -242,9 +242,9 @@ class EmailList extends _$EmailList {
     }
   }
 
-  /// 合并邮件列表（去重）
+  /// 合并邮件列表（去重并排序）
   ///
-  /// 将新邮件合并到现有列表顶部，去除重复邮件
+  /// 将新邮件合并到现有列表，去除重复邮件后统一按时间降序排序
   List<Email> _mergeEmails({
     required List<Email> newEmails,
     required List<Email> existingEmails,
@@ -262,8 +262,13 @@ class EmailList extends _$EmailList {
       return existingEmails;
     }
 
-    // 将新邮件插入到列表顶部
-    return [...uniqueNewEmails, ...existingEmails];
+    // 合并邮件列表
+    final mergedEmails = [...uniqueNewEmails, ...existingEmails];
+
+    // 统一按时间降序排序（新的在上面）
+    mergedEmails.sort((a, b) => b.date.compareTo(a.date));
+
+    return mergedEmails;
   }
 
   /// 刷新邮件列表（下拉刷新）

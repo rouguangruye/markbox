@@ -148,13 +148,13 @@ class _ImapConfigPageState extends ConsumerState<ImapConfigPage> {
 
       if (mounted) {
         if (result.success) {
-          // 测试成功
+          // 测试成功，更新状态
           setState(() {
             _testSuccess = true;
           });
-          _showSnackBar('连接测试成功', isError: false);
+          // 成功状态已通过 UI 反馈（绿色卡片），无需额外通知
         } else {
-          // 测试失败
+          // 测试失败，显示错误提示
           _showSnackBar(result.errorMessage ?? '连接测试失败', isError: true);
         }
       }
@@ -214,9 +214,8 @@ class _ImapConfigPageState extends ConsumerState<ImapConfigPage> {
 
     if (mounted) {
       if (success) {
-        _showSnackBar(widget.isEditMode ? '配置更新成功' : '配置保存成功', isError: false);
-        // 跳转到邮件列表页面，清除导航栈
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // 保存成功后跳转到邮件列表页面，清除导航栈
+        Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
               SlideFadePageRoute(page: const EmailListPage()),
