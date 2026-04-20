@@ -24,6 +24,9 @@ mixin _$EmailDetailState {
   /// 是否正在加载邮件数据
   bool get isLoading => throw _privateConstructorUsedError;
 
+  /// 内容是否正在渲染（包括 Markdown 解析、HTML WebView 加载等）
+  bool get isContentLoading => throw _privateConstructorUsedError;
+
   /// 邮件详情数据
   Email? get email => throw _privateConstructorUsedError;
 
@@ -47,7 +50,12 @@ abstract class $EmailDetailStateCopyWith<$Res> {
     $Res Function(EmailDetailState) then,
   ) = _$EmailDetailStateCopyWithImpl<$Res, EmailDetailState>;
   @useResult
-  $Res call({bool isLoading, Email? email, String? error});
+  $Res call({
+    bool isLoading,
+    bool isContentLoading,
+    Email? email,
+    String? error,
+  });
 
   $EmailCopyWith<$Res>? get email;
 }
@@ -68,6 +76,7 @@ class _$EmailDetailStateCopyWithImpl<$Res, $Val extends EmailDetailState>
   @override
   $Res call({
     Object? isLoading = null,
+    Object? isContentLoading = null,
     Object? email = freezed,
     Object? error = freezed,
   }) {
@@ -76,6 +85,10 @@ class _$EmailDetailStateCopyWithImpl<$Res, $Val extends EmailDetailState>
             isLoading: null == isLoading
                 ? _value.isLoading
                 : isLoading // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isContentLoading: null == isContentLoading
+                ? _value.isContentLoading
+                : isContentLoading // ignore: cast_nullable_to_non_nullable
                       as bool,
             email: freezed == email
                 ? _value.email
@@ -114,7 +127,12 @@ abstract class _$$EmailDetailStateImplCopyWith<$Res>
   ) = __$$EmailDetailStateImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({bool isLoading, Email? email, String? error});
+  $Res call({
+    bool isLoading,
+    bool isContentLoading,
+    Email? email,
+    String? error,
+  });
 
   @override
   $EmailCopyWith<$Res>? get email;
@@ -135,6 +153,7 @@ class __$$EmailDetailStateImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? isLoading = null,
+    Object? isContentLoading = null,
     Object? email = freezed,
     Object? error = freezed,
   }) {
@@ -143,6 +162,10 @@ class __$$EmailDetailStateImplCopyWithImpl<$Res>
         isLoading: null == isLoading
             ? _value.isLoading
             : isLoading // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isContentLoading: null == isContentLoading
+            ? _value.isContentLoading
+            : isContentLoading // ignore: cast_nullable_to_non_nullable
                   as bool,
         email: freezed == email
             ? _value.email
@@ -162,6 +185,7 @@ class __$$EmailDetailStateImplCopyWithImpl<$Res>
 class _$EmailDetailStateImpl implements _EmailDetailState {
   const _$EmailDetailStateImpl({
     this.isLoading = false,
+    this.isContentLoading = true,
     this.email,
     this.error,
   });
@@ -174,6 +198,11 @@ class _$EmailDetailStateImpl implements _EmailDetailState {
   @JsonKey()
   final bool isLoading;
 
+  /// 内容是否正在渲染（包括 Markdown 解析、HTML WebView 加载等）
+  @override
+  @JsonKey()
+  final bool isContentLoading;
+
   /// 邮件详情数据
   @override
   final Email? email;
@@ -184,7 +213,7 @@ class _$EmailDetailStateImpl implements _EmailDetailState {
 
   @override
   String toString() {
-    return 'EmailDetailState(isLoading: $isLoading, email: $email, error: $error)';
+    return 'EmailDetailState(isLoading: $isLoading, isContentLoading: $isContentLoading, email: $email, error: $error)';
   }
 
   @override
@@ -194,13 +223,16 @@ class _$EmailDetailStateImpl implements _EmailDetailState {
             other is _$EmailDetailStateImpl &&
             (identical(other.isLoading, isLoading) ||
                 other.isLoading == isLoading) &&
+            (identical(other.isContentLoading, isContentLoading) ||
+                other.isContentLoading == isContentLoading) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.error, error) || other.error == error));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, isLoading, email, error);
+  int get hashCode =>
+      Object.hash(runtimeType, isLoading, isContentLoading, email, error);
 
   /// Create a copy of EmailDetailState
   /// with the given fields replaced by the non-null parameter values.
@@ -222,6 +254,7 @@ class _$EmailDetailStateImpl implements _EmailDetailState {
 abstract class _EmailDetailState implements EmailDetailState {
   const factory _EmailDetailState({
     final bool isLoading,
+    final bool isContentLoading,
     final Email? email,
     final String? error,
   }) = _$EmailDetailStateImpl;
@@ -232,6 +265,10 @@ abstract class _EmailDetailState implements EmailDetailState {
   /// 是否正在加载邮件数据
   @override
   bool get isLoading;
+
+  /// 内容是否正在渲染（包括 Markdown 解析、HTML WebView 加载等）
+  @override
+  bool get isContentLoading;
 
   /// 邮件详情数据
   @override

@@ -26,6 +26,9 @@ class ContentRendererWidget extends StatelessWidget {
   /// 如果传入，将跳过自动检测直接使用此类型
   final EmailContentType? contentType;
 
+  /// 内容加载完成回调（可选）
+  final VoidCallback? onContentReady;
+
   /// 创建内容渲染器
   const ContentRendererWidget({
     super.key,
@@ -34,6 +37,7 @@ class ContentRendererWidget extends StatelessWidget {
     this.backgroundColor,
     this.padding,
     this.contentType,
+    this.onContentReady,
   });
 
   @override
@@ -55,7 +59,11 @@ class ContentRendererWidget extends StatelessWidget {
     // 根据内容类型选择渲染器
     switch (actualContentType) {
       case EmailContentType.markdown:
-        return MarkdownRenderer(markdownData: content, onTapLink: onTapLink);
+        return MarkdownRenderer(
+          markdownData: content,
+          onTapLink: onTapLink,
+          onContentReady: onContentReady,
+        );
 
       case EmailContentType.html:
         // HTML 类型应该使用 MessageViewerWidget，这里作为降级处理

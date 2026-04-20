@@ -16,11 +16,15 @@ class MarkdownRenderer extends StatefulWidget {
   /// 可选的链接点击回调
   final void Function(String)? onTapLink;
 
+  /// 内容加载完成回调
+  final VoidCallback? onContentReady;
+
   /// 创建 Markdown 渲染器
   const MarkdownRenderer({
     super.key,
     required this.markdownData,
     this.onTapLink,
+    this.onContentReady,
   });
 
   @override
@@ -38,6 +42,10 @@ class _MarkdownRendererState extends State<MarkdownRenderer> {
   void initState() {
     super.initState();
     _tryRenderMarkdown();
+    // 在首帧渲染后通知内容加载完成
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onContentReady?.call();
+    });
   }
 
   @override

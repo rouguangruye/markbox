@@ -6,7 +6,7 @@ part of 'email_detail_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$emailDetailHash() => r'937890d81af26276308dd8dafaeea61134313534';
+String _$emailDetailHash() => r'1b4585d65455f3619dce2924064de7edb2919271';
 
 /// 邮件详情 Provider
 ///

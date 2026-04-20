@@ -14,6 +14,9 @@ class EmailDetailState with _$EmailDetailState {
     /// 是否正在加载邮件数据
     @Default(false) bool isLoading,
 
+    /// 内容是否正在渲染（包括 Markdown 解析、HTML WebView 加载等）
+    @Default(true) bool isContentLoading,
+
     /// 邮件详情数据
     Email? email,
 

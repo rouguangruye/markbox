@@ -227,11 +227,11 @@ class EmailService {
 
       // 获取邮件列表（按时间倒序）
       // 使用 fetchRecentMessages 获取最近的邮件
-      // criteria 包含 ENVELOPE 和 INTERNALDATE 以确保获取邮件日期信息
+      // criteria 包含 UID、ENVELOPE 和 INTERNALDATE 以确保获取邮件日期信息和唯一标识符
       final fetchResult = await _client!
           .fetchRecentMessages(
             messageCount: startIndex,
-            criteria: '(FLAGS ENVELOPE INTERNALDATE BODY.PEEK[])',
+            criteria: '(UID FLAGS ENVELOPE INTERNALDATE BODY.PEEK[])',
           )
           .timeout(
             const Duration(milliseconds: operationTimeoutMs),
@@ -367,11 +367,169 @@ class EmailService {
     return text.isEmpty ? null : text;
   }
 
+  /// 月份名称到数字的映射
+  static const Map<String, int> _monthMap = {
+    'Jan': 1,
+    'Feb': 2,
+    'Mar': 3,
+    'Apr': 4,
+    'May': 5,
+    'Jun': 6,
+    'Jul': 7,
+    'Aug': 8,
+    'Sep': 9,
+    'Oct': 10,
+    'Nov': 11,
+    'Dec': 12,
+  };
+
+  /// 解析 RFC 2822 日期格式
+  ///
+  /// [dateStr] RFC 2822 格式的日期字符串，如 "Sun, 19 Apr 2026 15:28:05 +0800"
+  /// 返回解析后的 DateTime，解析失败返回 null
+  DateTime? _parseRfc2822Date(String dateStr) {
+    try {
+      // 格式: Day, DD Mon YYYY HH:MM:SS +ZZZZ
+      // 示例: Sun, 19 Apr 2026 15:28:05 +0800
+      final parts = dateStr.trim().split(RegExp(r'\s+'));
+      if (parts.length < 5) return null;
+
+      // 跳过星期几（parts[0]），从日期开始解析
+      int day;
+      int month;
+      int year;
+      String timeStr;
+      String tzStr;
+
+      // 检查第一个部分是否是星期几（带逗号）
+      int startIndex = 0;
+      if (parts[0].endsWith(',')) {
+        startIndex = 1;
+      }
+
+      day = int.parse(parts[startIndex].replaceAll(',', ''));
+      month = _monthMap[parts[startIndex + 1]] ?? 1;
+      year = int.parse(parts[startIndex + 2]);
+      timeStr = parts[startIndex + 3];
+      tzStr = parts[startIndex + 4];
+
+      // 解析时间
+      final timeParts = timeStr.split(':');
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      final second = int.parse(timeParts[2]);
+
+      // 解析时区
+      // +0800 表示东八区（比 UTC 快 8 小时），-0500 表示西五区（比 UTC 慢 5 小时）
+      final tzSign = tzStr[0] == '-' ? -1 : 1;
+      final tzHours = int.parse(tzStr.substring(1, 3));
+      final tzMinutes = int.parse(tzStr.substring(3, 5));
+      final tzOffsetMinutes = tzSign * (tzHours * 60 + tzMinutes);
+
+      // 解析的时间是本地时间（带时区），需要转换为 UTC
+      // 例如：15:28:05 +0800 表示东八区 15:28，对应 UTC 07:28
+      // 所以需要减去时区偏移量得到 UTC 时间
+      final localTime = DateTime.utc(year, month, day, hour, minute, second);
+      final utcTime = localTime.subtract(Duration(minutes: tzOffsetMinutes));
+
+      // 返回 UTC 时间，Flutter 会自动根据设备时区显示
+      return utcTime;
+    } catch (e) {
+      debugPrint('解析 RFC 2822 日期失败: $dateStr, 错误: $e');
+      return null;
+    }
+  }
+
+  /// 从 Received 头中解析日期
+  ///
+  /// [receivedHeader] Received 头内容
+  /// 返回解析出的日期，解析失败返回 null
+  DateTime? _parseReceivedHeaderDate(String? receivedHeader) {
+    if (receivedHeader == null || receivedHeader.isEmpty) {
+      return null;
+    }
+
+    // Received 头格式: ...; Sun, 19 Apr 2026 15:28:05 +0800
+    // 日期位于最后一个分号之后
+    final dateRegex = RegExp(
+      r';\s*((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+\d{1,2}\s+'
+      r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+'
+      r'\d{4}\s+\d{2}:\d{2}:\d{2}\s+[+-]\d{4})',
+      caseSensitive: true,
+    );
+
+    final match = dateRegex.firstMatch(receivedHeader);
+    if (match == null) {
+      debugPrint('Received 头日期格式不匹配: $receivedHeader');
+      return null;
+    }
+
+    final dateStr = match.group(1);
+    if (dateStr == null) {
+      return null;
+    }
+
+    try {
+      // 解析 RFC 2822 日期格式: Sun, 19 Apr 2026 15:28:05 +0800
+      final parsed = _parseRfc2822Date(dateStr);
+      if (parsed != null) {
+        debugPrint('从 Received 头解析日期成功: $parsed');
+        return parsed;
+      }
+    } catch (e) {
+      debugPrint('解析 Received 头日期失败: $e');
+    }
+
+    return null;
+  }
+
+  /// 从邮件消息中提取日期（带降级策略）
+  ///
+  /// 优先级: Date 头 > Received 头 > 当前时间
+  /// [message] MIME 消息对象
+  /// 返回解析出的日期
+  DateTime _extractDateFromMessage(MimeMessage message) {
+    // 优先级 1: 尝试从 Date 头获取
+    try {
+      final date = message.decodeDate();
+      if (date != null && date.year != 1970) {
+        debugPrint('邮件 ${message.sequenceId} 从 Date 头获取日期: $date');
+        return date;
+      }
+    } catch (e) {
+      debugPrint('解析 Date 头异常: $e');
+    }
+
+    // 优先级 2: 尝试从 Received 头获取
+    final headers = message.headers;
+    if (headers != null) {
+      final receivedHeaders = headers
+          .where((h) => h.lowerCaseName == 'received')
+          .toList();
+
+      // 从最后一个 Received 头开始尝试（最后一个是最接近接收时间的）
+      for (var i = receivedHeaders.length - 1; i >= 0; i--) {
+        final receivedDate = _parseReceivedHeaderDate(receivedHeaders[i].value);
+        if (receivedDate != null) {
+          debugPrint(
+            '邮件 ${message.sequenceId} 从 Received 头获取日期: $receivedDate',
+          );
+          return receivedDate;
+        }
+      }
+    }
+
+    // 优先级 3: 使用当前时间作为兜底
+    final now = DateTime.now();
+    debugPrint('邮件 ${message.sequenceId} 无有效日期，使用当前时间: $now');
+    return now;
+  }
+
   /// 将 MimeMessage 转换为 Email 模型
   Email _convertToEmail(MimeMessage message) {
-    // 获取邮件 ID（使用 sequenceId）
+    // 获取邮件 ID（使用 UID，UID 在邮箱中唯一且不变）
     final id =
-        message.sequenceId?.toString() ??
+        message.uid?.toString() ??
         DateTime.now().millisecondsSinceEpoch.toString();
 
     // 获取发件人信息
@@ -392,19 +550,8 @@ class EmailService {
     // 获取邮件主题
     final subject = message.decodeSubject() ?? '(无主题)';
 
-    // 获取邮件日期
-    DateTime date;
-    try {
-      date = message.decodeDate() ?? DateTime(1970, 1, 1);
-      if (date.year == 1970) {
-        debugPrint('警告: 邮件 ${message.sequenceId} 日期解析失败，使用默认日期');
-      } else {
-        debugPrint('邮件 ${message.sequenceId} 日期: $date');
-      }
-    } catch (e) {
-      debugPrint('解析邮件日期异常: $e');
-      date = DateTime(1970, 1, 1);
-    }
+    // 获取邮件日期（使用降级策略）
+    final date = _extractDateFromMessage(message);
 
     // 获取邮件内容
     // 使用 MimeParser 解析邮件内容，支持 Markdown 类型
@@ -464,7 +611,7 @@ class EmailService {
   /// 获取单封邮件详情
   ///
   /// [config] IMAP 配置信息
-  /// [messageId] 邮件 ID
+  /// [messageId] 邮件 UID
   /// [mailbox] 邮箱文件夹名称，默认为 INBOX
   Future<Email> fetchEmailDetail({
     required ImapConfig config,
@@ -478,20 +625,17 @@ class EmailService {
       // 选择邮箱文件夹
       await _client!.selectMailboxByPath(mailbox);
 
-      // 根据邮件 ID 获取邮件
-      final sequenceId = int.tryParse(messageId);
-      if (sequenceId == null) {
+      // 根据邮件 UID 获取邮件
+      final uid = int.tryParse(messageId);
+      if (uid == null) {
         throw EmailServiceException(
-          '无效的邮件 ID',
+          '无效的邮件 UID',
           errorType: EmailServiceErrorType.parseError,
         );
       }
 
-      // 获取邮件（使用 BODY[] 而非 BODY.PEEK[]，自动触发 \Seen 标志）
-      final fetchResult = await _client!.fetchMessage(
-        sequenceId,
-        '(FLAGS BODY[])',
-      );
+      // 使用 UID 获取邮件（使用 BODY[] 而非 BODY.PEEK[]，自动触发 \Seen 标志）
+      final fetchResult = await _client!.uidFetchMessage(uid, '(FLAGS BODY[])');
 
       if (fetchResult.messages.isEmpty) {
         throw EmailServiceException(
@@ -516,7 +660,7 @@ class EmailService {
   /// 标记邮件为已读
   ///
   /// [config] IMAP 配置信息
-  /// [messageId] 邮件 ID
+  /// [messageId] 邮件 UID
   /// [mailbox] 邮箱文件夹名称，默认为 INBOX
   Future<void> markAsRead({
     required ImapConfig config,
@@ -530,17 +674,17 @@ class EmailService {
       // 选择邮箱文件夹
       await _client!.selectMailboxByPath(mailbox);
 
-      // 根据邮件 ID 标记为已读
-      final sequenceId = int.tryParse(messageId);
-      if (sequenceId == null) {
+      // 根据邮件 UID 标记为已读
+      final uid = int.tryParse(messageId);
+      if (uid == null) {
         throw EmailServiceException(
-          '无效的邮件 ID',
+          '无效的邮件 UID',
           errorType: EmailServiceErrorType.parseError,
         );
       }
 
-      // 标记为已读
-      await _client!.store(MessageSequence.fromId(sequenceId), [
+      // 使用 UID 标记为已读
+      await _client!.uidStore(MessageSequence.fromId(uid), [
         MessageFlags.seen,
       ], action: StoreAction.add);
     } on EmailServiceException {
@@ -557,7 +701,7 @@ class EmailService {
   /// 删除邮件
   ///
   /// [config] IMAP 配置信息
-  /// [messageId] 邮件 ID
+  /// [messageId] 邮件 UID
   /// [mailbox] 邮箱文件夹名称，默认为 INBOX
   /// 删除操作会先标记邮件为 \Deleted，然后执行 expunge 永久删除
   Future<void> deleteEmail({
@@ -572,17 +716,17 @@ class EmailService {
       // 选择邮箱文件夹
       await _client!.selectMailboxByPath(mailbox);
 
-      // 解析邮件 ID
-      final sequenceId = int.tryParse(messageId);
-      if (sequenceId == null) {
+      // 解析邮件 UID
+      final uid = int.tryParse(messageId);
+      if (uid == null) {
         throw EmailServiceException(
-          '无效的邮件 ID',
+          '无效的邮件 UID',
           errorType: EmailServiceErrorType.parseError,
         );
       }
 
-      // 标记邮件为删除
-      await _client!.store(MessageSequence.fromId(sequenceId), [
+      // 使用 UID 标记邮件为删除
+      await _client!.uidStore(MessageSequence.fromId(uid), [
         MessageFlags.deleted,
       ], action: StoreAction.add);
 

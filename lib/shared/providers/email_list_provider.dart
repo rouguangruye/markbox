@@ -138,23 +138,27 @@ class EmailList extends _$EmailList {
   ///
   /// [configs] IMAP 配置列表
   /// 返回所有账户的邮件列表
+  /// 注意：由于 EmailService 使用单例连接，必须顺序获取每个账户的邮件
   Future<List<Email>> _fetchEmailsFromAllAccounts(List<dynamic> configs) async {
-    final futures = configs.map((config) async {
+    final allEmails = <Email>[];
+
+    // 顺序获取每个账户的邮件（避免连接冲突）
+    for (final config in configs) {
       try {
         final result = await _emailService.fetchEmails(
           config: config,
           page: 1,
           pageSize: pageSize,
         );
-        return result.emails;
+        allEmails.addAll(result.emails);
+        debugPrint('成功获取 ${result.emails.length} 封邮件 (${config.email})');
       } catch (e) {
         debugPrint('获取邮件失败 (${config.email}): $e');
-        return <Email>[];
+        // 继续获取下一个账户的邮件
       }
-    });
+    }
 
-    final results = await Future.wait(futures);
-    return results.expand((emails) => emails).toList();
+    return allEmails;
   }
 
   /// 合并并按时间排序邮件
@@ -354,7 +358,7 @@ class EmailList extends _$EmailList {
   ///
   /// [emailId] 邮件 ID
   /// 更新本地邮件列表中对应邮件的已读状态
-  void markEmailAsRead(String emailId) {
+  Future<void> markEmailAsRead(String emailId) async {
     final emails = state.emails;
     final index = emails.indexWhere((e) => e.id == emailId);
 
@@ -370,7 +374,7 @@ class EmailList extends _$EmailList {
     state = state.copyWith(emails: updatedEmails);
 
     // 保存到本地存储
-    _saveEmailsToCache(updatedEmails);
+    await _saveEmailsToCache(updatedEmails);
   }
 
   /// 异步生成邮件摘要

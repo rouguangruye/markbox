@@ -23,7 +23,6 @@ _$EmailImpl _$$EmailImplFromJson(Map<String, dynamic> json) => _$EmailImpl(
       $enumDecodeNullable(_$SummaryStatusEnumMap, json['summaryStatus']) ??
       SummaryStatus.notGenerated,
   mimeMessageRaw: json['mimeMessageRaw'] as String?,
-  cachedAt: (json['cachedAt'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$$EmailImplToJson(_$EmailImpl instance) =>
@@ -40,7 +39,6 @@ Map<String, dynamic> _$$EmailImplToJson(_$EmailImpl instance) =>
       'summary': instance.summary,
       'summaryStatus': _$SummaryStatusEnumMap[instance.summaryStatus]!,
       'mimeMessageRaw': instance.mimeMessageRaw,
-      'cachedAt': instance.cachedAt,
     };
 
 const _$EmailContentTypeEnumMap = {

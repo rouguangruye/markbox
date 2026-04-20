@@ -188,14 +188,18 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
       return _buildErrorWidget(theme, colorScheme, emailDetailState.error!);
     }
 
-    // 2. 加载中
+    // 2. 邮件数据加载中
     if (emailDetailState.isLoading) {
       return _buildLoadingIndicator(theme, colorScheme);
     }
 
-    // 3. 正常内容
+    // 3. 正常内容（可能还在渲染中，用 Visibility 控制）
     if (emailDetailState.email != null) {
-      return _buildEmailContent(theme, colorScheme, emailDetailState.email!);
+      return Visibility(
+        visible: !emailDetailState.isContentLoading,
+        maintainState: true, // 保持状态，让内容组件继续加载
+        child: _buildEmailContent(theme, colorScheme, emailDetailState.email!),
+      );
     }
 
     // 4. 空状态（理论上不应该到达这里）
@@ -371,6 +375,11 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
   /// - Markdown 类型：使用 ContentRendererWidget（支持 Markdown 语法高亮）
   /// - HTML/纯文本类型：使用 MessageViewerWidget（官方 MimeMessageViewer）
   Widget _buildEmailBody(ThemeData theme, ColorScheme colorScheme, email) {
+    // 内容加载完成回调
+    void onContentReady() {
+      ref.read(emailDetailProvider.notifier).setContentLoading(false);
+    }
+
     // 1. 如果是 Markdown 类型，使用 ContentRendererWidget
     if (email.contentType == EmailContentType.markdown) {
       if (email.body == null || email.body!.isEmpty) {
@@ -383,6 +392,7 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
           contentType: email.contentType,
           backgroundColor: colorScheme.surface,
           padding: EdgeInsets.zero,
+          onContentReady: onContentReady,
         ),
       );
     }
@@ -395,6 +405,7 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
           mimeMessageRaw: email.mimeMessageRaw!,
           backgroundColor: colorScheme.surface,
           isVisible: _isWebViewVisible,
+          onContentReady: onContentReady,
         ),
       );
     }
@@ -411,6 +422,7 @@ class _EmailDetailPageState extends ConsumerState<EmailDetailPage> {
         contentType: email.contentType,
         backgroundColor: colorScheme.surface,
         padding: EdgeInsets.zero,
+        onContentReady: onContentReady,
       ),
     );
   }

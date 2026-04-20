@@ -10,6 +10,7 @@ _$EmailDetailStateImpl _$$EmailDetailStateImplFromJson(
   Map<String, dynamic> json,
 ) => _$EmailDetailStateImpl(
   isLoading: json['isLoading'] as bool? ?? false,
+  isContentLoading: json['isContentLoading'] as bool? ?? true,
   email: json['email'] == null
       ? null
       : Email.fromJson(json['email'] as Map<String, dynamic>),
@@ -20,6 +21,7 @@ Map<String, dynamic> _$$EmailDetailStateImplToJson(
   _$EmailDetailStateImpl instance,
 ) => <String, dynamic>{
   'isLoading': instance.isLoading,
+  'isContentLoading': instance.isContentLoading,
   'email': instance.email,
   'error': instance.error,
 };

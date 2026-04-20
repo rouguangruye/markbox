@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/email_detail_state.dart';
@@ -62,9 +63,16 @@ class EmailDetail extends _$EmailDetail {
         // 保存到本地缓存
         await _storageService.saveEmailDetail(email);
 
+        // 显式标记邮件为已读（确保服务器状态同步）
+        try {
+          await _emailService.markAsRead(config: config, messageId: emailId);
+        } catch (e) {
+          // 标记已读失败不影响主流程
+          debugPrint('标记邮件已读失败: $e');
+        }
+
         // 更新本地邮件列表中的已读状态
-        // 使用 BODY[] 获取邮件详情后，服务器会自动设置 \Seen 标志
-        ref.read(emailListProvider.notifier).markEmailAsRead(emailId);
+        await ref.read(emailListProvider.notifier).markEmailAsRead(emailId);
         return;
       } catch (e) {
         // 继续尝试下一个配置
@@ -81,6 +89,13 @@ class EmailDetail extends _$EmailDetail {
   /// 清除当前状态中的错误信息
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  /// 设置内容加载状态
+  ///
+  /// [isLoading] 是否正在加载内容
+  void setContentLoading(bool isLoading) {
+    state = state.copyWith(isContentLoading: isLoading);
   }
 
   /// 重置状态

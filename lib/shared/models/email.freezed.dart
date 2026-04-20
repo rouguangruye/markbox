@@ -57,9 +57,6 @@ mixin _$Email {
   /// 原始 MIME 消息内容（用于 MimeMessageViewer 渲染）
   String? get mimeMessageRaw => throw _privateConstructorUsedError;
 
-  /// 缓存时间戳（用于缓存过期判断）
-  int? get cachedAt => throw _privateConstructorUsedError;
-
   /// Serializes this Email to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -87,7 +84,6 @@ abstract class $EmailCopyWith<$Res> {
     String? summary,
     SummaryStatus summaryStatus,
     String? mimeMessageRaw,
-    int? cachedAt,
   });
 }
 
@@ -118,7 +114,6 @@ class _$EmailCopyWithImpl<$Res, $Val extends Email>
     Object? summary = freezed,
     Object? summaryStatus = null,
     Object? mimeMessageRaw = freezed,
-    Object? cachedAt = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -170,10 +165,6 @@ class _$EmailCopyWithImpl<$Res, $Val extends Email>
                 ? _value.mimeMessageRaw
                 : mimeMessageRaw // ignore: cast_nullable_to_non_nullable
                       as String?,
-            cachedAt: freezed == cachedAt
-                ? _value.cachedAt
-                : cachedAt // ignore: cast_nullable_to_non_nullable
-                      as int?,
           )
           as $Val,
     );
@@ -201,7 +192,6 @@ abstract class _$$EmailImplCopyWith<$Res> implements $EmailCopyWith<$Res> {
     String? summary,
     SummaryStatus summaryStatus,
     String? mimeMessageRaw,
-    int? cachedAt,
   });
 }
 
@@ -231,7 +221,6 @@ class __$$EmailImplCopyWithImpl<$Res>
     Object? summary = freezed,
     Object? summaryStatus = null,
     Object? mimeMessageRaw = freezed,
-    Object? cachedAt = freezed,
   }) {
     return _then(
       _$EmailImpl(
@@ -283,10 +272,6 @@ class __$$EmailImplCopyWithImpl<$Res>
             ? _value.mimeMessageRaw
             : mimeMessageRaw // ignore: cast_nullable_to_non_nullable
                   as String?,
-        cachedAt: freezed == cachedAt
-            ? _value.cachedAt
-            : cachedAt // ignore: cast_nullable_to_non_nullable
-                  as int?,
       ),
     );
   }
@@ -308,7 +293,6 @@ class _$EmailImpl implements _Email {
     this.summary,
     this.summaryStatus = SummaryStatus.notGenerated,
     this.mimeMessageRaw,
-    this.cachedAt,
   });
 
   factory _$EmailImpl.fromJson(Map<String, dynamic> json) =>
@@ -365,13 +349,9 @@ class _$EmailImpl implements _Email {
   @override
   final String? mimeMessageRaw;
 
-  /// 缓存时间戳（用于缓存过期判断）
-  @override
-  final int? cachedAt;
-
   @override
   String toString() {
-    return 'Email(id: $id, senderName: $senderName, senderEmail: $senderEmail, subject: $subject, date: $date, preview: $preview, body: $body, contentType: $contentType, isRead: $isRead, summary: $summary, summaryStatus: $summaryStatus, mimeMessageRaw: $mimeMessageRaw, cachedAt: $cachedAt)';
+    return 'Email(id: $id, senderName: $senderName, senderEmail: $senderEmail, subject: $subject, date: $date, preview: $preview, body: $body, contentType: $contentType, isRead: $isRead, summary: $summary, summaryStatus: $summaryStatus, mimeMessageRaw: $mimeMessageRaw)';
   }
 
   @override
@@ -395,9 +375,7 @@ class _$EmailImpl implements _Email {
             (identical(other.summaryStatus, summaryStatus) ||
                 other.summaryStatus == summaryStatus) &&
             (identical(other.mimeMessageRaw, mimeMessageRaw) ||
-                other.mimeMessageRaw == mimeMessageRaw) &&
-            (identical(other.cachedAt, cachedAt) ||
-                other.cachedAt == cachedAt));
+                other.mimeMessageRaw == mimeMessageRaw));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -416,7 +394,6 @@ class _$EmailImpl implements _Email {
     summary,
     summaryStatus,
     mimeMessageRaw,
-    cachedAt,
   );
 
   /// Create a copy of Email
@@ -447,7 +424,6 @@ abstract class _Email implements Email {
     final String? summary,
     final SummaryStatus summaryStatus,
     final String? mimeMessageRaw,
-    final int? cachedAt,
   }) = _$EmailImpl;
 
   factory _Email.fromJson(Map<String, dynamic> json) = _$EmailImpl.fromJson;
@@ -499,10 +475,6 @@ abstract class _Email implements Email {
   /// 原始 MIME 消息内容（用于 MimeMessageViewer 渲染）
   @override
   String? get mimeMessageRaw;
-
-  /// 缓存时间戳（用于缓存过期判断）
-  @override
-  int? get cachedAt;
 
   /// Create a copy of Email
   /// with the given fields replaced by the non-null parameter values.

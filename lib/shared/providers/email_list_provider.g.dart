@@ -48,7 +48,7 @@ final zhipuServiceProvider = AutoDisposeProvider<ZhipuService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ZhipuServiceRef = AutoDisposeProviderRef<ZhipuService>;
-String _$emailListHash() => r'fd1bdbb70172de81fe1cd837dfd012f39b50dee8';
+String _$emailListHash() => r'1f2f4d6b11e9852573e2f1432fd4004f9f6700f0';
 
 /// 邮件列表 Provider
 ///
